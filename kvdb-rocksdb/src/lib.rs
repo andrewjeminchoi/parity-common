@@ -298,6 +298,7 @@ impl Database {
 		opts.set_max_open_files(config.max_open_files);
 		opts.set_parsed_options("keep_log_file_num=1").map_err(other_io_err)?;
 		opts.set_parsed_options("bytes_per_sync=1048576").map_err(other_io_err)?;
+		opts.set_parsed_options("stats_dump_period_sec=1").map_err(other_io_err)?;
 		opts.set_db_write_buffer_size(config.memory_budget_per_col() / 2);
 		opts.increase_parallelism(cmp::max(1, ::num_cpus::get() as i32 / 2));
 
