@@ -637,7 +637,6 @@ impl Database {
 		*self.db.write() = None;
 		self.overlay.write().clear();
 		self.flushing.write().clear();
-		println!("{:?}", self.db_opts.get_statistics_string());
 	}
 
 	/// Restore the database from a copy at given path.
@@ -713,6 +712,7 @@ impl Database {
 impl Drop for Database {
 	fn drop(&mut self) {
 		// write all buffered changes if we can.
+		println!("{:?}", self.db_opts.get_statistics_string());
 		let _ = self.flush();
 	}
 }
