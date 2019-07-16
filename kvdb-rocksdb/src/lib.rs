@@ -248,6 +248,7 @@ pub struct Database {
 	db: RwLock<Option<DBAndColumns>>,
 	config: DatabaseConfig,
 	write_opts: WriteOptions,
+    db_opts: Options,
 	read_opts: ReadOptions,
 	block_opts: BlockBasedOptions,
 	path: String,
@@ -276,6 +277,46 @@ fn is_corrupted(s: &str) -> bool {
 	s.starts_with("Corruption:") || s.starts_with("Invalid argument: You have to open all column families")
 }
 
+// duplicate declaration of methods here to avoid trait import in certain existing cases
+// at time of addition.
+impl KeyValueDB for Database {
+	fn get(&self, col: Option<u32>, key: &[u8]) -> io::Result<Option<DBValue>> {
+		Database::get(self, col, key)
+	}
+
+	fn get_by_prefix(&self, col: Option<u32>, prefix: &[u8]) -> Option<Box<[u8]>> {
+		Database::get_by_prefix(self, col, prefix)
+	}
+
+	fn write_buffered(&self, transaction: DBTransaction) {
+		Database::write_buffered(self, transaction)
+	}
+
+	fn write(&self, transaction: DBTransaction) -> io::Result<()> {
+		Database::write(self, transaction)
+	}
+
+	fn flush(&self) -> io::Result<()> {
+		Database::flush(self)
+	}
+
+	fn iter<'a>(&'a self, col: Option<u32>) -> Box<Iterator<Item=(Box<[u8]>, Box<[u8]>)> + 'a> {
+		let unboxed = Database::iter(self, col);
+		Box::new(unboxed.into_iter().flat_map(|inner| inner))
+	}
+
+	fn iter_from_prefix<'a>(&'a self, col: Option<u32>, prefix: &'a [u8])
+							-> Box<Iterator<Item=(Box<[u8]>, Box<[u8]>)> + 'a>
+	{
+		let unboxed = Database::iter_from_prefix(self, col, prefix);
+		Box::new(unboxed.into_iter().flat_map(|inner| inner))
+	}
+
+	fn restore(&self, new_db: &str) -> io::Result<()> {
+		Database::restore(self, new_db)
+	}
+}
+
 impl Database {
 	const CORRUPTION_FILE_NAME: &'static str = "CORRUPTED";
 
@@ -298,6 +339,7 @@ impl Database {
 		opts.set_parsed_options("bytes_per_sync=1048576").map_err(other_io_err)?;
 		opts.set_parsed_options("stats_dump_period_sec=1").map_err(other_io_err)?;
 		opts.set_db_write_buffer_size(config.memory_budget_per_col() / 2);
+        opts.enable_statistics();
 		opts.increase_parallelism(cmp::max(1, ::num_cpus::get() as i32 / 2));
 
 		let mut block_opts = BlockBasedOptions::new();
@@ -384,6 +426,7 @@ impl Database {
 			db: RwLock::new(Some(DBAndColumns{ db: db, cfs: cfs })),
 			config: config.clone(),
 			write_opts: write_opts,
+			db_opts: opts,
 			overlay: RwLock::new((0..(num_cols + 1)).map(|_| HashMap::new()).collect()),
 			flushing: RwLock::new((0..(num_cols + 1)).map(|_| HashMap::new()).collect()),
 			flushing_lock: Mutex::new(false),
@@ -594,6 +637,7 @@ impl Database {
 		*self.db.write() = None;
 		self.overlay.write().clear();
 		self.flushing.write().clear();
+		println!("{:?}", self.db_opts.get_statistics_string());
 	}
 
 	/// Restore the database from a copy at given path.
@@ -663,46 +707,6 @@ impl Database {
 			},
 			None => Ok(()),
 		}
-	}
-}
-
-// duplicate declaration of methods here to avoid trait import in certain existing cases
-// at time of addition.
-impl KeyValueDB for Database {
-	fn get(&self, col: Option<u32>, key: &[u8]) -> io::Result<Option<DBValue>> {
-		Database::get(self, col, key)
-	}
-
-	fn get_by_prefix(&self, col: Option<u32>, prefix: &[u8]) -> Option<Box<[u8]>> {
-		Database::get_by_prefix(self, col, prefix)
-	}
-
-	fn write_buffered(&self, transaction: DBTransaction) {
-		Database::write_buffered(self, transaction)
-	}
-
-	fn write(&self, transaction: DBTransaction) -> io::Result<()> {
-		Database::write(self, transaction)
-	}
-
-	fn flush(&self) -> io::Result<()> {
-		Database::flush(self)
-	}
-
-	fn iter<'a>(&'a self, col: Option<u32>) -> Box<Iterator<Item=(Box<[u8]>, Box<[u8]>)> + 'a> {
-		let unboxed = Database::iter(self, col);
-		Box::new(unboxed.into_iter().flat_map(|inner| inner))
-	}
-
-	fn iter_from_prefix<'a>(&'a self, col: Option<u32>, prefix: &'a [u8])
-		-> Box<Iterator<Item=(Box<[u8]>, Box<[u8]>)> + 'a>
-	{
-		let unboxed = Database::iter_from_prefix(self, col, prefix);
-		Box::new(unboxed.into_iter().flat_map(|inner| inner))
-	}
-
-	fn restore(&self, new_db: &str) -> io::Result<()> {
-		Database::restore(self, new_db)
 	}
 }
 
