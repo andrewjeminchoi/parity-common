@@ -9,6 +9,7 @@
 # parity-common
 Collection of crates used in [Parity Technologies](https://www.paritytech.io/) projects
 
-Note to self: 
-Branch: rocks-db
-/kvdb-rocksdb/cargo.toml
+Note to self (RocksDB statistics): 
+
+Branch: rocksdb
+/kvdb-rocksdb/Cargo.toml
