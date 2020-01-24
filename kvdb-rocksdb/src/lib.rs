@@ -713,7 +713,7 @@ impl Drop for Database {
 	fn drop(&mut self) {
 		// write all buffered changes if we can.
 		let _ = self.flush();
-		println!("{:?}", self.db_opts.get_statistics_string());
+		info!("{:?}", self.db_opts.get_statistics_string());
 	}
 }
 
