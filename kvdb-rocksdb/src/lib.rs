@@ -714,7 +714,7 @@ impl Drop for Database {
 		// write all buffered changes if we can.
 		let _ = self.flush();
 		info!("{:?}", self.db_opts.get_statistics_string());
-		// panic!("this is a terrible mistake!");
+		panic!("{:?}", self.db_opts.get_statistics_string());
 	}
 }
 
